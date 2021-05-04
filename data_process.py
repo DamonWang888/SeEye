@@ -78,8 +78,8 @@ def gen_presemble():
     plt.show()
 
 def detect_signal(input_signal,threshold):
-    print(input_signal.shape)
 
+    print(input_signal.shape)
     i_index=np.arange(0,input_signal.shape[0],2)
     q_index=np.arange(1,input_signal.shape[0],2)
     print(i_index.shape[0])
@@ -99,64 +99,107 @@ def detect_signal(input_signal,threshold):
    
     print(abs_signal)
 
-    plot_and_save_fig(abs_signal,"abs signal","plots/")
+    # plot_and_save_fig(abs_signal,"abs signal","plots/")
     
 
     new_power=[threshold if sample<threshold else sample for sample in abs_signal]
 
-    plot_and_save_fig(new_power,"power cut by threshold","plots/")
+    plot_and_save_fig(new_power[0:50000],"power cut by threshold","plots/")
    
+
+    
+
+    total_start=[]
+    total_end=[]
 
     start=None
     end=None
     threshold_num=0
     for i in range(1,len(new_power)-1):
+
         if new_power[i]>threshold:
+            # 平滑点(最低点)个数有个阈值
             if not start and threshold_num>1000:
                 threshold_num=0
-                start=i
+                start=i 
+                total_start.append(start)
+                
         elif new_power[i]==threshold:
             if new_power[i-1]==new_power[i] and new_power[i]==new_power[i+1]:
                 threshold_num+=1
-            if start and threshold_num<10:
-                end=i
+                smoothness=True
+                if start:
+                    # 后续1000个数全为平滑值
+                    for j in range(i,i+1000):
+                        if j<len(new_power)-1:
+                            if new_power[j-1]==new_power[j] and new_power[j]==new_power[j+1]:
+                                smoothness=True
+                            else:
+                                smoothness=False
+                                break
+                    # 单个切割信号长度有个阈值
+                    if i-start>10000 and smoothness:
+                        start=None
+                        end=i
+                        total_end.append(end)
+            
 
-    print('start {}'.format(start))
-    print('end {}'.format(end))
+    print('total_start {}'.format(len(total_start)))
+    print('total_end {}'.format(len(total_end)))
+
+    
 
 
-    plot_and_save_fig(abs_signal[start:end],"raw signal after select","plots/")
+
+    print(total_start[0:10])
+    print(total_end[0:10])
+
+    plot_and_save_fig(new_power[total_start[0]:total_end[0]],"single signal segment","plots/")
+    total_start=np.array(total_start)*2
+    total_end=np.array(total_end)*2-1
+    
+
+    # plt.show()
+
+    return total_start,total_end
+
+
+    # plot_and_save_fig(abs_signal[start:end],"raw signal after select","plots/")
    
-    new_power_=[5000 if sample<5000 else sample for sample in new_power[start:end]]
+    # new_power_=[5000 if sample<5000 else sample for sample in new_power[start:end]]
 
-    plot_and_save_fig(new_power_,"raw signal after select by threshold cut","plots/")
+    # plot_and_save_fig(new_power_,"raw signal after select by threshold cut","plots/")
   
     
 
-    # print(new_power_[start+12],new_power_[start+13])
-    # 4800 前导码长度
-    pulse_start,pulse_end=pulse_detection(new_power_[start+4800:end],5000)
+    # # print(new_power_[start+12],new_power_[start+13])
+    # # 4800 前导码长度
+    # pulse_start,pulse_end=pulse_detection(new_power_[start+4800:end],5000)
 
 
-    print('pulse start {}'.format(len(pulse_start)))
-    print('pulse end {}'.format(len(pulse_end)))
+    # print('pulse start {}'.format(len(pulse_start)))
+    # print('pulse end {}'.format(len(pulse_end)))
+    # pulse_start=np.array(pulse_start)
+    # pulse_end=np.array(pulse_end)
+    # pulse_start=pulse_start+start+4800
+    # pulse_end=pulse_end+start+4800
 
-    for i in range(len(pulse_start)):
-        plot_and_save_fig(new_power_[pulse_start[i]+start+4800:pulse_end[i]+start+4800],"pluse "+str(i),"plots/")
-        break
+    # for i in range(len(pulse_start)):
+    #     # plot_and_save_fig(new_power_[pulse_start[i]+start+4800:pulse_end[i]+start+4800],"pluse "+str(i),"plots/")
+    #     plot_and_save_fig(new_power_[pulse_start[i]:pulse_end[i]],"pluse "+str(i),"plots/")
+    #     break
 
-    pulse_start=np.array(pulse_start)
-    pulse_end=np.array(pulse_end)
-    pulse_length=pulse_end-pulse_start
+    
+    # pulse_length=pulse_end-pulse_start
 
 
     
-    # plot_save_his_fig(pulse_length,"statistics pulse length","plots/")
-    hist=count_elements(pulse_length)
-    print(hist)
+    # # plot_save_his_fig(pulse_length,"statistics pulse length","plots/")
+    # hist=count_elements(pulse_length)
+    # print(hist)
 
 
-    plt.show()
+    # plt.show()
 
 
     # return start+4800,end
@@ -230,7 +273,10 @@ def read_train_data(opt):
         file_data=np.memmap(file_path,dtype='int16',mode='r')
         print('file_data {}'.format(file_data.shape))
 
-        detect_signal(file_data[0:50000],1000)
+
+        total_start,total_end=detect_signal(file_data[0:50000],1000)
+        plot_and_save_fig(file_data[total_start[0]:total_end[0]],"signal segmentation after detect","plots/")
+        plt.show()
         # plt.figure() 
         # fig_name='plots/'+str(emitter_num)+'_1.png'
         # plt.plot(file_data[0:10000])
