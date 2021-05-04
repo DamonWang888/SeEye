@@ -131,11 +131,54 @@ def detect_signal(input_signal,threshold):
 
     plot_and_save_fig(new_power_,"raw signal after select by threshold cut","plots/")
   
+    
+
+    # print(new_power_[start+12],new_power_[start+13])
+    # 4800 前导码长度
+    pulse_start,pulse_end=pulse_detection(new_power_[start+4800:end],5000)
+
+
+    print('pulse start {}'.format(len(pulse_start)))
+    print('pulse end {}'.format(len(pulse_end)))
+
+    for i in range(len(pulse_start)):
+        plot_and_save_fig(new_power_[pulse_start[i]+start+4800:pulse_end[i]+start+4800],"pluse "+str(i),"plots/")
+        break
+
+    pulse_start=np.array(pulse_start)
+    pulse_end=np.array(pulse_end)
+    pulse_length=pulse_end-pulse_start
+
+
+    
+    # plot_save_his_fig(pulse_length,"statistics pulse length","plots/")
+    hist=count_elements(pulse_length)
+    print(hist)
+
+
     plt.show()
 
-    # 4800 前导码长度
-    return start+4800,end
-    
+
+    # return start+4800,end
+
+def count_elements(seq) -> dict:
+ """Tally elements from `seq`."""
+ hist = {}
+ for i in seq:
+    hist[i] = hist.get(i, 0) + 1
+ return hist
+ 
+
+
+def plot_save_his_fig(data,title,path):
+    plt.figure()
+    plt.hist(data)
+    plt.title(title)
+    title=title.replace(" ","_")
+    fig_name=path+'/'+title+'.png'
+    plt.savefig(fig_name)
+
+
 def plot_and_save_fig(data,title,path):
     plt.figure()
     plt.plot(data)
@@ -144,6 +187,40 @@ def plot_and_save_fig(data,title,path):
     fig_name=path+'/'+title+'.png'
     plt.savefig(fig_name)
     
+
+def pulse_detection(data,threshold):
+    """
+    @data:
+    @threshold:
+    @return:two list,element resprents the index indicating the pulse start and end
+    """
+
+    start=[]
+    end=[]
+    up=False
+    for i in range(0,len(data)-1):
+        if data[i]==threshold and data[i+1]>threshold:
+            print('start i {}'.format(i))
+            start_up=i
+            up=True
+        if data[i]>threshold and data[i+1]==threshold and up:
+            print('end i {}'.format(i))
+            up=False
+            end_down=i
+            if end_down>start_up:
+                start.append(start_up)
+                end.append(end_down)
+        if data[i]>threshold and up:
+            # print('continue')
+            continue
+        
+        
+    return start,end
+
+
+    
+
+
 
 def read_train_data(opt):
     files=os.listdir(opt.train_data_path)
